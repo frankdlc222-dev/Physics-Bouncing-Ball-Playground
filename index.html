@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Physics Ball Playground</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0f0f1a;
+      color: #e0e0e0;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* ---------- Canvas ---------- */
+    canvas {
+      display: block;
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ---------- Header ---------- */
+    .header {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      z-index: 20;
+      pointer-events: none;
+      user-select: none;
+    }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: none;
+    }
+    .header p {
+      font-size: 0.95rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 4px;
+    }
+
+    /* ---------- Glass Panel ---------- */
+    .panel {
+      position: fixed;
+      top: 50%;
+      right: 24px;
+      transform: translateY(-50%);
+      width: 260px;
+      max-height: 90vh;
+      overflow-y: auto;
+      z-index: 30;
+      background: rgba(20, 20, 40, 0.65);
+      backdrop-filter: blur(18px) saturate(1.4);
+      -webkit-backdrop-filter: blur(18px) saturate(1.4);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    .panel::-webkit-scrollbar { width: 4px; }
+    .panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+
+    .panel-title {
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: rgba(255,255,255,0.35);
+    }
+
+    /* ---------- Controls ---------- */
+    .control { display: flex; flex-direction: column; gap: 6px; }
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.7);
+    }
+    .control label span.val {
+      color: #a78bfa;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.08);
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #a78bfa;
+      border: 2px solid rgba(255,255,255,0.2);
+      box-shadow: 0 0 8px rgba(167,139,250,0.5);
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #a78bfa;
+      border: 2px solid rgba(255,255,255,0.2);
+      box-shadow: 0 0 8px rgba(167,139,250,0.5);
+      cursor: pointer;
+    }
+
+    /* ---------- Buttons ---------- */
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      flex: 1 1 45%;
+      padding: 10px 0;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.3px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #7c3aed, #6366f1);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+    }
+    .btn-primary:hover { box-shadow: 0 4px 20px rgba(99,102,241,0.55); transform: translateY(-1px); }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.7);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+
+    .btn-accent {
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(239,68,68,0.3);
+    }
+    .btn-accent:hover { box-shadow: 0 4px 20px rgba(239,68,68,0.5); transform: translateY(-1px); }
+
+    .btn-full { flex: 1 1 100%; }
+
+    /* Toggle */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .toggle-row span { font-size: 0.82rem; color: rgba(255,255,255,0.7); }
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      cursor: pointer;
+    }
+    .toggle input { display: none; }
+    .toggle .slider {
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.1);
+      border-radius: 12px;
+      transition: background 0.3s;
+    }
+    .toggle .slider::after {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform 0.3s;
+    }
+    .toggle input:checked + .slider { background: #7c3aed; }
+    .toggle input:checked + .slider::after { transform: translateX(20px); }
+
+    /* CTA */
+    .cta-btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      text-align: center;
+      border: none;
+      border-radius: 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: linear-gradient(135deg, #34d399, #06b6d4);
+      color: #0f172a;
+      box-shadow: 0 4px 14px rgba(52,211,153,0.3);
+      transition: all 0.2s;
+    }
+    .cta-btn:hover { box-shadow: 0 4px 20px rgba(52,211,153,0.5); transform: translateY(-1px); }
+
+    .divider {
+      height: 1px;
+      background: rgba(255,255,255,0.06);
+    }
+
+    /* FPS counter */
+    .fps {
+      position: fixed;
+      bottom: 12px;
+      left: 12px;
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.25);
+      z-index: 20;
+      font-variant-numeric: tabular-nums;
+      pointer-events: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .panel {
+        position: fixed;
+        bottom: 0;
+        top: auto;
+        right: 0;
+        left: 0;
+        width: 100%;
+        max-height: 55vh;
+        transform: none;
+        border-radius: 20px 20px 0 0;
+      }
+      .header { top: 12px; }
+      .header h1 { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div class="header">
+  <h1>Physics Ball Playground</h1>
+  <p>Tune gravity, bounce, and motion in real time</p>
+</div>
+
+<div class="panel">
+  <div class="panel-title">Simulation Controls</div>
+
+  <div class="control">
+    <label>Gravity <span class="val" id="gravityVal">0.40</span></label>
+    <input type="range" id="gravity" min="0" max="2" step="0.01" value="0.40" />
+  </div>
+
+  <div class="control">
+    <label>Bounce <span class="val" id="bounceVal">0.75</span></label>
+    <input type="range" id="bounce" min="0" max="1" step="0.01" value="0.75" />
+  </div>
+
+  <div class="control">
+    <label>Friction <span class="val" id="frictionVal">0.99</span></label>
+    <input type="range" id="friction" min="0.9" max="1" step="0.001" value="0.99" />
+  </div>
+
+  <div class="control">
+    <label>Balls <span class="val" id="ballCountVal">12</span></label>
+    <input type="range" id="ballCount" min="1" max="80" step="1" value="12" />
+  </div>
+
+  <div class="control">
+    <label>Size <span class="val" id="sizeVal">22</span></label>
+    <input type="range" id="size" min="6" max="60" step="1" value="22" />
+  </div>
+
+  <div class="control">
+    <label>Speed <span class="val" id="speedVal">1.0</span></label>
+    <input type="range" id="speed" min="0.1" max="3" step="0.1" value="1.0" />
+  </div>
+
+  <div class="control">
+    <label>Trail <span class="val" id="trailVal">0.15</span></label>
+    <input type="range" id="trail" min="0" max="1" step="0.01" value="0.15" />
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="toggle-row">
+    <span>Chaos Mode</span>
+    <label class="toggle">
+      <input type="checkbox" id="chaos" />
+      <div class="slider"></div>
+    </label>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" id="randomize">Randomize Colors</button>
+    <button class="btn btn-accent" id="reset">Reset</button>
+  </div>
+
+  <button class="cta-btn" id="copyBtn">Copy &amp; Customize</button>
+</div>
+
+<div class="fps" id="fps">-- fps</div>
+
+<script>
+/* ===== CANVAS SETUP ===== */
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth * devicePixelRatio;
+  canvas.height = window.innerHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+}
+window.addEventListener('resize', resize);
+resize();
+
+const W = () => window.innerWidth;
+const H = () => window.innerHeight;
+
+/* ===== PALETTE ===== */
+const palettes = [
+  ['#a78bfa','#60a5fa','#34d399','#fbbf24','#f87171','#fb923c','#e879f9','#38bdf8'],
+  ['#f472b6','#c084fc','#818cf8','#38bdf8','#2dd4bf','#4ade80','#facc15','#fb923c'],
+  ['#ff6b6b','#feca57','#48dbfb','#ff9ff3','#54a0ff','#5f27cd','#01a3a4','#f368e0'],
+];
+
+function randomPalette() {
+  return palettes[Math.floor(Math.random() * palettes.length)];
+}
+function randomColor(palette) {
+  return palette[Math.floor(Math.random() * palette.length)];
+}
+
+/* ===== SETTINGS ===== */
+const settings = {
+  gravity: 0.4,
+  bounce: 0.75,
+  friction: 0.99,
+  ballCount: 12,
+  size: 22,
+  speed: 1.0,
+  trail: 0.15,
+  chaos: false,
+};
+
+/* ===== BALL CLASS ===== */
+let balls = [];
+let currentPalette = randomPalette();
+
+function createBall(palette, index) {
+  const r = settings.size * (0.7 + Math.random() * 0.6);
+  return {
+    x: r + Math.random() * (W() - 2 * r),
+    y: r + Math.random() * (H() * 0.5),
+    vx: (Math.random() - 0.5) * 6,
+    vy: (Math.random() - 0.5) * 4,
+    r,
+    color: randomColor(palette),
+    glow: 0.3 + Math.random() * 0.4,
+    phase: Math.random() * Math.PI * 2,
+  };
+}
+
+function spawnBalls() {
+  currentPalette = randomPalette();
+  balls = [];
+  for (let i = 0; i < settings.ballCount; i++) {
+    balls.push(createBall(currentPalette, i));
+  }
+}
+spawnBalls();
+
+/* ===== CONTROLS ===== */
+const controls = ['gravity','bounce','friction','ballCount','size','speed','trail'];
+controls.forEach(key => {
+  const el = document.getElementById(key);
+  const valEl = document.getElementById(key + 'Val');
+  el.addEventListener('input', () => {
+    const v = parseFloat(el.value);
+    settings[key] = v;
+    valEl.textContent = Number.isInteger(v) ? v : v.toFixed(key === 'friction' ? 3 : 2);
+    if (key === 'ballCount') syncBallCount();
+    if (key === 'size') updateBallSizes();
+  });
+});
+
+document.getElementById('chaos').addEventListener('change', e => {
+  settings.chaos = e.target.checked;
+});
+
+document.getElementById('randomize').addEventListener('click', () => {
+  currentPalette = randomPalette();
+  balls.forEach(b => b.color = randomColor(currentPalette));
+});
+
+document.getElementById('reset').addEventListener('click', () => {
+  document.getElementById('gravity').value = 0.4;  settings.gravity = 0.4;  document.getElementById('gravityVal').textContent = '0.40';
+  document.getElementById('bounce').value = 0.75;   settings.bounce = 0.75;  document.getElementById('bounceVal').textContent = '0.75';
+  document.getElementById('friction').value = 0.99;  settings.friction = 0.99; document.getElementById('frictionVal').textContent = '0.990';
+  document.getElementById('ballCount').value = 12;   settings.ballCount = 12;  document.getElementById('ballCountVal').textContent = '12';
+  document.getElementById('size').value = 22;        settings.size = 22;      document.getElementById('sizeVal').textContent = '22';
+  document.getElementById('speed').value = 1.0;      settings.speed = 1.0;    document.getElementById('speedVal').textContent = '1.0';
+  document.getElementById('trail').value = 0.15;     settings.trail = 0.15;   document.getElementById('trailVal').textContent = '0.15';
+  document.getElementById('chaos').checked = false;  settings.chaos = false;
+  spawnBalls();
+});
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+  const src = document.documentElement.outerHTML;
+  navigator.clipboard.writeText(src).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy & Customize', 1500);
+  });
+});
+
+function syncBallCount() {
+  while (balls.length < settings.ballCount) balls.push(createBall(currentPalette, balls.length));
+  while (balls.length > settings.ballCount) balls.pop();
+}
+
+function updateBallSizes() {
+  balls.forEach(b => {
+    b.r = settings.size * (0.7 + Math.random() * 0.6);
+  });
+}
+
+/* ===== PHYSICS ===== */
+function update() {
+  const spd = settings.speed;
+  const g = settings.gravity;
+  const f = settings.friction;
+  const bounce = settings.bounce;
+  const w = W();
+  const h = H();
+
+  for (const b of balls) {
+    // Chaos: random impulses
+    if (settings.chaos && Math.random() < 0.03) {
+      b.vx += (Math.random() - 0.5) * 8;
+      b.vy += (Math.random() - 0.5) * 8;
+    }
+
+    b.vy += g * spd;
+    b.vx *= f;
+    b.vy *= f;
+    b.x += b.vx * spd;
+    b.y += b.vy * spd;
+
+    // Walls
+    if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx) * bounce; }
+    if (b.x + b.r > w) { b.x = w - b.r; b.vx = -Math.abs(b.vx) * bounce; }
+    if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy) * bounce; }
+    if (b.y + b.r > h) { b.y = h - b.r; b.vy = -Math.abs(b.vy) * bounce; }
+  }
+
+  // Ball-ball collisions
+  for (let i = 0; i < balls.length; i++) {
+    for (let j = i + 1; j < balls.length; j++) {
+      const a = balls[i], b = balls[j];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const minDist = a.r + b.r;
+      if (dist < minDist && dist > 0) {
+        const nx = dx / dist;
+        const ny = dy / dist;
+        const overlap = minDist - dist;
+        a.x -= nx * overlap * 0.5;
+        a.y -= ny * overlap * 0.5;
+        b.x += nx * overlap * 0.5;
+        b.y += ny * overlap * 0.5;
+        const dvx = a.vx - b.vx;
+        const dvy = a.vy - b.vy;
+        const dot = dvx * nx + dvy * ny;
+        if (dot > 0) {
+          a.vx -= dot * nx * bounce;
+          a.vy -= dot * ny * bounce;
+          b.vx += dot * nx * bounce;
+          b.vy += dot * ny * bounce;
+        }
+      }
+    }
+  }
+}
+
+/* ===== RENDER ===== */
+let lastTime = performance.now();
+let frameCount = 0;
+let fpsDisplay = 0;
+
+function render(now) {
+  requestAnimationFrame(render);
+
+  // FPS
+  frameCount++;
+  if (now - lastTime >= 1000) {
+    fpsDisplay = frameCount;
+    frameCount = 0;
+    lastTime = now;
+    document.getElementById('fps').textContent = fpsDisplay + ' fps';
+  }
+
+  const w = W();
+  const h = H();
+
+  // Trail effect
+  const alpha = 1 - settings.trail;
+  ctx.fillStyle = `rgba(15, 15, 26, ${alpha})`;
+  ctx.fillRect(0, 0, w, h);
+
+  update();
+
+  // Draw balls
+  for (const b of balls) {
+    const pulse = 1 + 0.06 * Math.sin(now * 0.003 + b.phase);
+
+    // Glow
+    const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 2.5 * pulse);
+    grad.addColorStop(0, b.color + '40');
+    grad.addColorStop(1, b.color + '00');
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r * 2.5 * pulse, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Main ball
+    const ballGrad = ctx.createRadialGradient(
+      b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.1,
+      b.x, b.y, b.r * pulse
+    );
+    ballGrad.addColorStop(0, '#ffffff');
+    ballGrad.addColorStop(0.3, b.color);
+    ballGrad.addColorStop(1, b.color + 'aa');
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r * pulse, 0, Math.PI * 2);
+    ctx.fillStyle = ballGrad;
+    ctx.fill();
+
+    // Specular highlight
+    ctx.beginPath();
+    ctx.arc(b.x - b.r * 0.25, b.y - b.r * 0.25, b.r * 0.35, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fill();
+  }
+}
+
+requestAnimationFrame(render);
+
+/* ===== MOUSE INTERACTION ===== */
+let mouseDown = false;
+let mouseX = 0, mouseY = 0;
+
+canvas.addEventListener('mousedown', e => { mouseDown = true; mouseX = e.clientX; mouseY = e.clientY; });
+canvas.addEventListener('mousemove', e => { if (mouseDown) { mouseX = e.clientX; mouseY = e.clientY; } });
+canvas.addEventListener('mouseup', () => { mouseDown = false; });
+
+canvas.addEventListener('click', e => {
+  const b = createBall(currentPalette, balls.length);
+  b.x = e.clientX;
+  b.y = e.clientY;
+  b.vx = (Math.random() - 0.5) * 10;
+  b.vy = -Math.random() * 8 - 2;
+  balls.push(b);
+  settings.ballCount = balls.length;
+  document.getElementById('ballCount').value = balls.length;
+  document.getElementById('ballCountVal').textContent = balls.length;
+});
+
+// Attract balls to mouse when dragging
+setInterval(() => {
+  if (!mouseDown) return;
+  for (const b of balls) {
+    const dx = mouseX - b.x;
+    const dy = mouseY - b.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) + 1;
+    b.vx += (dx / dist) * 0.8;
+    b.vy += (dy / dist) * 0.8;
+  }
+}, 16);
+</script>
+
+</body>
+</html>
