@@ -202,23 +202,6 @@
     .toggle input:checked + .slider { background: #7c3aed; }
     .toggle input:checked + .slider::after { transform: translateX(20px); }
 
-    /* CTA */
-    .cta-btn {
-      display: block;
-      width: 100%;
-      padding: 12px;
-      text-align: center;
-      border: none;
-      border-radius: 14px;
-      font-size: 0.82rem;
-      font-weight: 600;
-      cursor: pointer;
-      background: linear-gradient(135deg, #34d399, #06b6d4);
-      color: #0f172a;
-      box-shadow: 0 4px 14px rgba(52,211,153,0.3);
-      transition: all 0.2s;
-    }
-    .cta-btn:hover { box-shadow: 0 4px 20px rgba(52,211,153,0.5); transform: translateY(-1px); }
 
     .divider {
       height: 1px;
@@ -319,7 +302,6 @@
     <button class="btn btn-accent" id="reset">Reset</button>
   </div>
 
-  <button class="cta-btn" id="copyBtn">Copy &amp; Customize</button>
 </div>
 
 <div class="fps" id="fps">-- fps</div>
@@ -428,14 +410,6 @@ document.getElementById('reset').addEventListener('click', () => {
   spawnBalls();
 });
 
-document.getElementById('copyBtn').addEventListener('click', () => {
-  const src = document.documentElement.outerHTML;
-  navigator.clipboard.writeText(src).then(() => {
-    const btn = document.getElementById('copyBtn');
-    btn.textContent = 'Copied!';
-    setTimeout(() => btn.textContent = 'Copy & Customize', 1500);
-  });
-});
 
 function syncBallCount() {
   while (balls.length < settings.ballCount) balls.push(createBall(currentPalette, balls.length));
